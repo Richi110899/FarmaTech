@@ -5,7 +5,7 @@ const sequelize = require('./config/database');
 
 const app = express();
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'https://pibu-nine.vercel.app',
+  origin: process.env.CORS_ORIGIN || 'https://farma-tech.vercel.app',
   credentials: true
 }));
 app.use(express.json());
@@ -27,12 +27,12 @@ app.use('/api/alertas', require('./routes/alertaRoutes'));
 
 app.get('/', (req, res) => res.send('API PibuFarma funcionando'));
 
-// Sincronizar base de datos (sin force para no perder datos)
-sequelize.sync().then(() => {
+// Crear tablas automáticamente en Railway
+sequelize.sync({ force: false }).then(() => {
   const port = process.env.PORT || 3000;
   app.listen(port, () => {
     console.log(`Servidor corriendo en puerto ${port}`);
-    console.log('Base de datos sincronizada');
+    console.log('Base de datos sincronizada - Tablas creadas automáticamente');
   });
 }).catch(error => {
   console.error('Error al sincronizar la base de datos:', error);
