@@ -8,7 +8,8 @@ const verificarToken = async (req, res, next) => {
     
     if (!token) {
       return res.status(401).json({ 
-        mensaje: 'Token de acceso requerido' 
+        success: false,
+        message: 'Token de acceso requerido' 
       });
     }
 
@@ -17,7 +18,8 @@ const verificarToken = async (req, res, next) => {
     
     if (!usuario || !usuario.activo) {
       return res.status(401).json({ 
-        mensaje: 'Usuario no válido o inactivo' 
+        success: false,
+        message: 'Usuario no válido o inactivo' 
       });
     }
 
@@ -25,7 +27,8 @@ const verificarToken = async (req, res, next) => {
     next();
   } catch (error) {
     return res.status(401).json({ 
-      mensaje: 'Token inválido' 
+      success: false,
+      message: 'Token inválido' 
     });
   }
 };
@@ -35,13 +38,15 @@ const verificarRol = (roles) => {
   return (req, res, next) => {
     if (!req.usuario) {
       return res.status(401).json({ 
-        mensaje: 'Usuario no autenticado' 
+        success: false,
+        message: 'Usuario no autenticado' 
       });
     }
 
     if (!roles.includes(req.usuario.rol)) {
       return res.status(403).json({ 
-        mensaje: 'No tienes permisos para realizar esta acción' 
+        success: false,
+        message: 'No tienes permisos para realizar esta acción' 
       });
     }
 

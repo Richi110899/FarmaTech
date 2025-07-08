@@ -1,7 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import { getLaboratorios } from '../../services/api';
+import Pagination from '@/components/Pagination';
+
+const API_LABORATORIOS = `${process.env.NEXT_PUBLIC_API_URL}/api/laboratorios`;
 
 const columns = [
   { key: "CodLab", label: "Código" },
@@ -21,6 +23,8 @@ export default function LaboratoriosPage() {
   const [loading, setLoading] = useState(false);
   const [mensajeGlobal, setMensajeGlobal] = useState("");
   const [eliminando, setEliminando] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const filasPorPagina = 10;
 
   useEffect(() => {
     fetchLaboratorios();
@@ -47,28 +51,47 @@ export default function LaboratoriosPage() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [selected, showDeleteModal]);
 
+  // Escape para cerrar modales de eliminación
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && showDeleteModal) {
+        setShowDeleteModal(false);
+        setSelected(null);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showDeleteModal]);
+
   const fetchLaboratorios = async () => {
     setLoading(true);
     try {
-      const data = await getLaboratorios();
+      const res = await fetch(API_LABORATORIOS);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const data = await res.json();
       setLaboratorios(data);
-    } catch {
+    } catch (error) {
+      console.error('Error fetching laboratorios:', error);
       setMensajeGlobal("Error al cargar los laboratorios");
     }
     setLoading(false);
   };
 
+  // Aplica el filtro primero si existe
   const laboratoriosFiltrados = laboratorios.filter(lab =>
     columns.some(col => (lab[col.key] || "").toLowerCase?.().includes(filtro.toLowerCase()))
   );
+  const totalPaginas = Math.ceil(laboratoriosFiltrados.length / filasPorPagina);
+  const laboratoriosPaginados = laboratoriosFiltrados.slice((pagina - 1) * filasPorPagina, pagina * filasPorPagina);
 
   // Eliminar
   const handleEliminar = async () => {
     if (!selected) return;
     setEliminando(true);
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL;
-      const res = await fetch(`${API}/api/laboratorios/${selected.CodLab}`, { method: "DELETE" });
+      const res = await fetch(`${API_LABORATORIOS}/${selected.CodLab}`, { method: "DELETE" });
       if (res.ok) {
         setMensajeGlobal("Laboratorio eliminado exitosamente");
         setShowDeleteModal(false); setSelected(null);
@@ -80,14 +103,15 @@ export default function LaboratoriosPage() {
       } else {
         setMensajeGlobal("Error al eliminar el laboratorio");
       }
-    } catch {
+    } catch (error) {
+      console.error('Error deleting laboratorio:', error);
       setMensajeGlobal("Error al eliminar el laboratorio");
     }
     setEliminando(false);
   };
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mt-[-15px]">Laboratorios</h1>
         <button
@@ -120,17 +144,19 @@ export default function LaboratoriosPage() {
             </tr>
           </thead>
           <tbody>
-            {laboratoriosFiltrados.length === 0 ? (
+            {laboratoriosPaginados.length === 0 ? (
               <tr><td colSpan={columns.length} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td></tr>
             ) : (
-              laboratoriosFiltrados.map((lab) => (
+              laboratoriosPaginados.map((lab) => (
                 <tr
                   key={lab.CodLab}
                   className="hover:bg-blue-50 cursor-pointer transition-colors duration-150 border-b border-gray-100"
                   onClick={() => setSelected(lab)}
                 >
                   {columns.map(col => (
-                    <td key={col.key} className="p-3 text-sm text-gray-800">{lab[col.key]}</td>
+                    <td key={col.key} className="p-3 text-sm text-gray-800">
+                      {col.key === 'CodLab' ? lab[col.key].toString().padStart(3, '0') : lab[col.key]}
+                    </td>
                   ))}
                 </tr>
               ))
@@ -138,6 +164,11 @@ export default function LaboratoriosPage() {
           </tbody>
         </table>
       </div>
+      <Pagination
+        currentPage={pagina}
+        totalPages={totalPaginas}
+        onPageChange={setPagina}
+      />
 
       {/* Modal de detalle */}
       {selected && !showDeleteModal && (
@@ -182,13 +213,13 @@ export default function LaboratoriosPage() {
             <div className="flex gap-3 mt-8">
               <button
                 onClick={() => router.push(`/laboratorios/editar/${selected.CodLab}`)}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Editar
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Eliminar
               </button>
@@ -231,20 +262,10 @@ export default function LaboratoriosPage() {
                 </button>
                 <button
                   onClick={handleEliminar}
-                  className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={eliminando}
                 >
-                  {eliminando ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Eliminando...
-                    </span>
-                  ) : (
-                    "Eliminar"
-                  )}
+                  {eliminando ? 'Eliminando...' : 'Eliminar'}
                 </button>
               </div>
             </div>

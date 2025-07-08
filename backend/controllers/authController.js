@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const Usuario = require('../models/usuario');
 
 // Generar token JWT
@@ -6,7 +7,7 @@ const generarToken = (usuario) => {
   return jwt.sign(
     { 
       id: usuario.id, 
-      username: usuario.username, 
+      email: usuario.email, 
       rol: usuario.rol 
     },
     process.env.JWT_SECRET || 'tu_secreto_jwt_super_seguro',
@@ -14,185 +15,172 @@ const generarToken = (usuario) => {
   );
 };
 
-// Registro de usuario
-const registrar = async (req, res) => {
-  try {
-    const { username, password, nombre, apellido, email, rol } = req.body;
-
-    // Validar que el usuario no exista
-    const usuarioExistente = await Usuario.findOne({
-      where: { username }
-    });
-
-    if (usuarioExistente) {
-      return res.status(400).json({
-        mensaje: 'El nombre de usuario ya existe'
-      });
-    }
-
-    // Validar que el email no exista
-    const emailExistente = await Usuario.findOne({
-      where: { email }
-    });
-
-    if (emailExistente) {
-      return res.status(400).json({
-        mensaje: 'El email ya está registrado'
-      });
-    }
-
-    // Crear nuevo usuario
-    const nuevoUsuario = await Usuario.create({
-      username,
-      password,
-      nombre,
-      apellido,
-      email,
-      rol: rol || 'Vendedor'
-    });
-
-    // Generar token
-    const token = generarToken(nuevoUsuario);
-
-    res.status(201).json({
-      mensaje: 'Usuario registrado exitosamente',
-      token,
-      usuario: {
-        id: nuevoUsuario.id,
-        username: nuevoUsuario.username,
-        nombre: nuevoUsuario.nombre,
-        apellido: nuevoUsuario.apellido,
-        email: nuevoUsuario.email,
-        rol: nuevoUsuario.rol
-      }
-    });
-
-  } catch (error) {
-    console.error('Error en registro:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
-  }
-};
-
-// Login de usuario
+// Login de usuario (local)
 const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
-
-    // Buscar usuario
-    const usuario = await Usuario.findOne({
-      where: { username }
-    });
-
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Por favor, completa todos los campos' });
+    }
+    const usuario = await Usuario.findOne({ where: { email } });
     if (!usuario) {
-      return res.status(401).json({
-        mensaje: 'Credenciales inválidas'
-      });
+      return res.status(401).json({ success: false, message: 'Usuario no registrado' });
     }
-
-    // Verificar si el usuario está activo
     if (!usuario.activo) {
-      return res.status(401).json({
-        mensaje: 'Usuario inactivo'
-      });
+      return res.status(401).json({ success: false, message: 'Usuario inactivo' });
     }
-
-    // Validar contraseña
-    const passwordValida = await usuario.validarPassword(password);
+    const passwordValida = await bcrypt.compare(password, usuario.password);
     if (!passwordValida) {
-      return res.status(401).json({
-        mensaje: 'Credenciales inválidas'
-      });
+      return res.status(401).json({ success: false, message: 'Credenciales incorrectas' });
     }
-
-    // Generar token
     const token = generarToken(usuario);
-
     res.json({
-      mensaje: 'Login exitoso',
+      success: true,
+      message: 'Login exitoso',
       token,
-      usuario: {
+      user: {
         id: usuario.id,
-        username: usuario.username,
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         email: usuario.email,
         rol: usuario.rol
       }
     });
-
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 };
 
-// Obtener perfil del usuario actual
+// Login con Google OAuth
+const loginGoogle = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const usuario = await Usuario.findOne({ where: { email } });
+    if (!usuario) {
+      return res.status(401).json({ success: false, message: 'Usuario no registrado' });
+    }
+    if (!usuario.activo) {
+      return res.status(401).json({ success: false, message: 'Usuario inactivo' });
+    }
+    const token = generarToken(usuario);
+    res.json({
+      success: true,
+      message: 'Login con Google exitoso',
+      token,
+      user: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        email: usuario.email,
+        rol: usuario.rol
+      }
+    });
+  } catch (error) {
+    console.error('Error en login Google:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+};
+
+// Verificar usuario de Google (ahora también genera token)
+const verifyGoogleUser = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const usuario = await Usuario.findOne({ where: { email } });
+    if (!usuario) {
+      return res.status(401).json({ success: false, message: 'Usuario no registrado' });
+    }
+    if (!usuario.activo) {
+      return res.status(401).json({ success: false, message: 'Usuario inactivo' });
+    }
+    const token = generarToken(usuario);
+    res.json({
+      success: true,
+      message: 'Usuario verificado exitosamente',
+      user: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        email: usuario.email,
+        rol: usuario.rol
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Error verificando usuario Google:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+};
+
+// Crear usuario
+const crearUsuario = async (req, res) => {
+  try {
+    const { nombre, apellido, email, password, rol } = req.body;
+    const emailExistente = await Usuario.findOne({ where: { email } });
+    if (emailExistente) {
+      return res.status(400).json({ success: false, message: 'El email ya está registrado' });
+    }
+    const nuevoUsuario = await Usuario.create({
+      nombre,
+      apellido,
+      email,
+      password,
+      rol: rol || 'Vendedor'
+    });
+    res.status(201).json({
+      success: true,
+      message: 'Usuario creado exitosamente',
+      user: {
+        id: nuevoUsuario.id,
+        nombre: nuevoUsuario.nombre,
+        apellido: nuevoUsuario.apellido,
+        email: nuevoUsuario.email,
+        rol: nuevoUsuario.rol
+      }
+    });
+  } catch (error) {
+    console.error('Error al crear usuario:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+};
+
+// Obtener perfil
 const obtenerPerfil = async (req, res) => {
   try {
-    const usuario = await Usuario.findByPk(req.usuario.id, {
-      attributes: { exclude: ['password'] }
-    });
-
-    res.json({
-      usuario
-    });
-
+    const usuario = await Usuario.findByPk(req.usuario.id, { attributes: { exclude: ['password'] } });
+    res.json({ success: true, user: usuario });
   } catch (error) {
     console.error('Error al obtener perfil:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 };
 
-// Obtener todos los usuarios (solo administradores)
+// Obtener todos los usuarios
 const obtenerUsuarios = async (req, res) => {
   try {
     const usuarios = await Usuario.findAll({
       attributes: { exclude: ['password'] },
       order: [['fechaCreacion', 'DESC']]
     });
-
-    res.json({
-      usuarios
-    });
-
+    res.json({ success: true, users: usuarios });
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 };
 
-// Obtener un usuario específico (solo administradores)
+// Obtener un usuario específico
 const obtenerUsuario = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const usuario = await Usuario.findByPk(id, {
-      attributes: { exclude: ['password'] }
-    });
-
+    const usuario = await Usuario.findByPk(id, { attributes: { exclude: ['password'] } });
     if (!usuario) {
-      return res.status(404).json({
-        mensaje: 'Usuario no encontrado'
-      });
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
     }
-
-    res.json({
-      usuario
-    });
-
+    res.json({ success: true, user: usuario });
   } catch (error) {
     console.error('Error al obtener usuario:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 };
 
@@ -200,121 +188,68 @@ const obtenerUsuario = async (req, res) => {
 const actualizarUsuario = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, apellido, email, rol, activo } = req.body;
-
+    const { nombre, apellido, email, password, rol, activo } = req.body;
     const usuario = await Usuario.findByPk(id);
     if (!usuario) {
-      return res.status(404).json({
-        mensaje: 'Usuario no encontrado'
-      });
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
     }
-
-    // Solo administradores pueden cambiar roles
-    if (rol && req.usuario.rol !== 'Administrador') {
-      return res.status(403).json({
-        mensaje: 'No tienes permisos para cambiar roles'
-      });
+    if (email && email !== usuario.email) {
+      const emailExistente = await Usuario.findOne({ where: { email } });
+      if (emailExistente) {
+        return res.status(400).json({ success: false, message: 'El email ya está registrado' });
+      }
     }
-
-    await usuario.update({
-      nombre,
-      apellido,
-      email,
-      rol: req.usuario.rol === 'Administrador' ? rol : usuario.rol,
-      activo
-    });
-
+    usuario.nombre = nombre || usuario.nombre;
+    usuario.apellido = apellido || usuario.apellido;
+    usuario.email = email || usuario.email;
+    usuario.rol = rol || usuario.rol;
+    usuario.activo = activo !== undefined ? activo : usuario.activo;
+    if (password) {
+      usuario.password = password;
+    }
+    await usuario.save();
     res.json({
-      mensaje: 'Usuario actualizado exitosamente',
-      usuario: {
+      success: true,
+      message: 'Usuario actualizado exitosamente',
+      user: {
         id: usuario.id,
-        username: usuario.username,
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         email: usuario.email,
-        rol: usuario.rol,
-        activo: usuario.activo
+        rol: usuario.rol
       }
     });
-
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 };
 
-// Eliminar usuario (solo administradores)
+// Eliminar usuario
 const eliminarUsuario = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // No permitir eliminar el propio usuario
-    if (parseInt(id) === req.usuario.id) {
-      return res.status(400).json({
-        mensaje: 'No puedes eliminar tu propia cuenta'
-      });
-    }
-
     const usuario = await Usuario.findByPk(id);
     if (!usuario) {
-      return res.status(404).json({
-        mensaje: 'Usuario no encontrado'
-      });
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
     }
-
-    // En lugar de eliminar físicamente, desactivar el usuario
-    await usuario.update({ activo: false });
-
-    res.json({
-      mensaje: 'Usuario desactivado exitosamente'
-    });
-
+    usuario.activo = false;
+    await usuario.save();
+    res.json({ success: true, message: 'Usuario desactivado exitosamente' });
   } catch (error) {
     console.error('Error al eliminar usuario:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
-  }
-};
-
-// Cambiar contraseña
-const cambiarPassword = async (req, res) => {
-  try {
-    const { passwordActual, passwordNueva } = req.body;
-    const usuario = await Usuario.findByPk(req.usuario.id);
-
-    // Validar contraseña actual
-    const passwordValida = await usuario.validarPassword(passwordActual);
-    if (!passwordValida) {
-      return res.status(400).json({
-        mensaje: 'Contraseña actual incorrecta'
-      });
-    }
-
-    // Actualizar contraseña
-    await usuario.update({ password: passwordNueva });
-
-    res.json({
-      mensaje: 'Contraseña actualizada exitosamente'
-    });
-
-  } catch (error) {
-    console.error('Error al cambiar contraseña:', error);
-    res.status(500).json({
-      mensaje: 'Error interno del servidor'
-    });
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
 };
 
 module.exports = {
-  registrar,
   login,
+  loginGoogle,
+  verifyGoogleUser,
+  crearUsuario,
   obtenerPerfil,
   obtenerUsuarios,
   obtenerUsuario,
   actualizarUsuario,
-  eliminarUsuario,
-  cambiarPassword
+  eliminarUsuario
 }; 

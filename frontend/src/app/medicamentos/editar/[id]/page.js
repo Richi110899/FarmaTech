@@ -2,10 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-
-const API_MED = `${process.env.NEXT_PUBLIC_API_URL}/api/medicamentos`;
-const API_ESP = `${process.env.NEXT_PUBLIC_API_URL}/api/especialidades`;
-const API_TIPO = `${process.env.NEXT_PUBLIC_API_URL}/api/tipos`;
+import { API_ENDPOINTS } from '@/services/api';
 
 const initialState = {
   descripcionMed: '',
@@ -14,7 +11,6 @@ const initialState = {
   Presentacion: '',
   stock: '',
   precioVentaUni: '',
-  precioVentaPres: '',
   CodTipoMed: '',
   Marca: '',
   CodEspec: ''
@@ -23,13 +19,14 @@ const initialState = {
 const Input = ({ label, name, type = "text", value, onChange, ...props }) => {
   const isDate = type === 'date';
   const [focused, setFocused] = useState(false);
+  const safeValue = value || '';
   return (
     <div className="relative mb-8">
       <input
         type={type}
         name={name}
         id={name}
-        value={value}
+        value={safeValue}
         onChange={onChange}
         onFocus={isDate ? () => setFocused(true) : undefined}
         onBlur={isDate ? () => setFocused(false) : undefined}
@@ -46,7 +43,7 @@ const Input = ({ label, name, type = "text", value, onChange, ...props }) => {
         className={
           "absolute left-0 transition-all pointer-events-none -top-3.5 text-sm " +
           (isDate
-            ? ((focused || (value && value !== "")) ? "text-blue-600" : "text-gray-400")
+            ? ((focused || (safeValue && safeValue !== "")) ? "text-blue-600" : "text-gray-400")
             : "text-blue-600 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 -top-3.5 peer-focus:-top-3.5 peer-focus:text-blue-600 peer-focus:text-sm")
         }
       >
@@ -58,13 +55,14 @@ const Input = ({ label, name, type = "text", value, onChange, ...props }) => {
 
 const FloatingSelect = ({ label, name, value, onChange, children, ...props }) => {
   const [focused, setFocused] = React.useState(false);
-  const hasValue = value && value !== "";
+  const safeValue = value || '';
+  const hasValue = safeValue && safeValue !== "";
   return (
     <div className="relative mb-8">
       <select
         name={name}
         id={name}
-        value={value}
+        value={safeValue}
         onChange={onChange}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -101,16 +99,22 @@ export default function EditarMedicamento() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   useEffect(() => {
-    fetch(API_ESP).then(r => r.json()).then(setEspecialidades);
-    fetch(API_TIPO).then(r => r.json()).then(setTipos);
+    fetch(API_ENDPOINTS.ESPECIALIDADES).then(r => r.json()).then(setEspecialidades);
+    fetch(API_ENDPOINTS.TIPOS).then(r => r.json()).then(setTipos);
     if (id) {
-      fetch(`${API_MED}/${id}`)
+      fetch(`${API_ENDPOINTS.MEDICAMENTOS}/${id}`)
         .then(r => r.json())
         .then(data => {
           setForm({
-            ...data,
+            descripcionMed: data.descripcionMed || '',
             fechaFabricacion: data.fechaFabricacion?.slice(0,10) || '',
-            fechaVencimiento: data.fechaVencimiento?.slice(0,10) || ''
+            fechaVencimiento: data.fechaVencimiento?.slice(0,10) || '',
+            Presentacion: data.Presentacion || '',
+            stock: data.stock?.toString() || '',
+            precioVentaUni: data.precioVentaUni?.toString() || '',
+            CodTipoMed: data.CodTipoMed?.toString() || '',
+            Marca: data.Marca || '',
+            CodEspec: data.CodEspec?.toString() || ''
           });
         });
     }
@@ -131,13 +135,16 @@ export default function EditarMedicamento() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_MED}/${id}`, {
+      const res = await fetch(`${API_ENDPOINTS.MEDICAMENTOS}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
       });
       if (res.ok) {
-        router.push('/medicamentos?edit=success');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('medicamentosMensaje', 'Medicamento actualizado exitosamente');
+        }
+        router.push('/medicamentos');
       } else {
         setError('Error al actualizar el medicamento');
       }
@@ -147,7 +154,7 @@ export default function EditarMedicamento() {
     setLoading(false);
   };
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto pt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mb-8">Editar Medicamento</h1>
       </div>
@@ -179,9 +186,8 @@ export default function EditarMedicamento() {
             <Input label="Stock" name="stock" type="number" min="0" value={form.stock} onChange={handleChange} required />
           </div>
           {/* Fila 3 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
             <Input label="Precio Venta Unidad" name="precioVentaUni" type="number" step="0.01" min="0" value={form.precioVentaUni} onChange={handleChange} required />
-            <Input label="Precio Venta Presentación" name="precioVentaPres" type="number" step="0.01" min="0" value={form.precioVentaPres} onChange={handleChange} required />
             <Input label="Fecha de fabricación" name="fechaFabricacion" type="date" value={form.fechaFabricacion} onChange={handleChange} required />
             <Input label="Fecha de vencimiento" name="fechaVencimiento" type="date" value={form.fechaVencimiento} onChange={handleChange} required />
           </div>

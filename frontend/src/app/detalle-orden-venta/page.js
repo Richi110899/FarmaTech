@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Pagination from '@/components/Pagination';
 
-const API_DETALLES = `${process.env.NEXT_PUBLIC_API_URL}/api/detalles-venta`;
-const API_ORDENES = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-venta`;
-const API_MEDICAMENTO = `${process.env.NEXT_PUBLIC_API_URL}/api/medicamentos`;
+const API_DETALLES_VENTA = `${process.env.NEXT_PUBLIC_API_URL}/api/detalles-venta`;
+const API_ORDENES_VENTA = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-venta`;
 
 const columns = [
   { key: "id", label: "ID" },
@@ -76,14 +76,14 @@ function DetalleModal({ detalle, onClose, onEdit, onDelete, eliminando, error, m
         <div className="flex gap-3 mt-8">
           <button
             onClick={onEdit}
-            className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+            className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
             disabled={eliminando}
           >
             Editar
           </button>
           <button
             onClick={onDelete}
-            className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+            className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
             disabled={eliminando}
           >
             {eliminando ? 'Eliminando...' : 'Eliminar'}
@@ -125,7 +125,7 @@ function ConfirmDeleteModal({ selected, onCancel, onConfirm, loading }) {
             </button>
             <button
               onClick={onConfirm}
-              className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
               {loading ? (
@@ -170,35 +170,21 @@ export default function DetalleOrdenVentaPage() {
   const [eliminando, setEliminando] = useState(false);
   const [modalMensaje, setModalMensaje] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const filasPorPagina = 10;
+  const totalPaginas = Math.ceil(detalles.length / filasPorPagina);
+  const detallesPaginados = detalles.slice((pagina - 1) * filasPorPagina, pagina * filasPorPagina);
 
   useEffect(() => {
     fetchDetalles();
-    if (typeof window !== 'undefined') {
-      const msg = localStorage.getItem('detalleOrdenVentaMensaje');
-      if (msg) {
-        setMensajeGlobal(msg);
-        localStorage.removeItem('detalleOrdenVentaMensaje');
-        setTimeout(() => setMensajeGlobal(''), 3000);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === 'detalleOrdenVentaMensaje' && e.newValue) {
-        fetchDetalles();
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const fetchDetalles = async () => {
     setLoading(true);
     try {
       const [detallesRes, ordenesRes] = await Promise.all([
-        fetch(API_DETALLES),
-        fetch(API_ORDENES)
+        fetch(API_DETALLES_VENTA),
+        fetch(API_ORDENES_VENTA)
       ]);
       const [detallesData, ordenesData] = await Promise.all([
         detallesRes.json(),
@@ -247,7 +233,7 @@ export default function DetalleOrdenVentaPage() {
   const handleDelete = async () => {
     setEliminando(true);
     try {
-      const res = await fetch(`${API_DETALLES}/${detalle.id}`, { method: "DELETE" });
+      const res = await fetch(`${API_DETALLES_VENTA}/${detalle.id}`, { method: "DELETE" });
       if (res.ok) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('medicamentoMensaje', 'Stock actualizado');
@@ -266,8 +252,20 @@ export default function DetalleOrdenVentaPage() {
     setEliminando(false);
   };
 
+  // Escape para cerrar modales de eliminación
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && showDeleteModal) {
+        setShowDeleteModal(false);
+        setDetalle(null); // Ensure selected is null when closing
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showDeleteModal]);
+
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mt-[-15px]">Detalles de Orden de Venta</h1>
         <button
@@ -301,10 +299,10 @@ export default function DetalleOrdenVentaPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={4} className="text-center p-6 text-gray-500 text-sm">Cargando...</td></tr>
-            ) : detallesFiltrados.length === 0 ? (
+            ) : detallesPaginados.length === 0 ? (
               <tr><td colSpan={4} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td></tr>
             ) : (
-              detallesFiltrados.map((detalle) => (
+              detallesPaginados.map((detalle) => (
                 <tr key={detalle.id} className="hover:bg-blue-50 cursor-pointer transition-colors duration-150 border-b border-gray-100"
                   onClick={() => handleRowClick(detalle)}
                 >
@@ -318,6 +316,11 @@ export default function DetalleOrdenVentaPage() {
           </tbody>
         </table>
       </div>
+      <Pagination
+        currentPage={pagina}
+        totalPages={totalPaginas}
+        onPageChange={setPagina}
+      />
       {detalle && !showDeleteModal && (
         <DetalleModal
           detalle={detalle}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getDetallesOrdenVenta, getMedicamentos, updateDetalleOrdenVenta, addDetalleOrdenVenta, deleteDetalleOrdenVenta } from '@/services/api';
+import { getDetallesOrdenVenta, getMedicamentos, updateDetalleOrdenVenta, addDetalleOrdenVenta, deleteDetalleOrdenVenta, API_ENDPOINTS } from '@/services/api';
 
 const Input = ({ label, name, type = "text", value, onChange, ...props }) => {
   const isDate = type === 'date';
@@ -238,7 +238,7 @@ export default function EditarDetalleOrdenVenta() {
   }
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Editar Detalles de Orden de Venta</h1>
       </div>

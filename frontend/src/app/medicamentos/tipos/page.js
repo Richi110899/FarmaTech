@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Pagination from '@/components/Pagination';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/tipos`;
+const API_TIPOS = `${process.env.NEXT_PUBLIC_API_URL}/api/tipos`;
 
 // Floating label input reutilizable
 const FloatingInput = ({ label, name, value, onChange, ...props }) => (
@@ -40,6 +41,15 @@ export default function TiposMedicamentoPage() {
   const [loading, setLoading] = useState(false);
   const [mensajeGlobal, setMensajeGlobal] = useState('');
   const router = useRouter();
+
+  const [pagina, setPagina] = useState(1);
+  const filasPorPagina = 10;
+  // Aplica el filtro primero si existe
+  const tiposFiltrados = tipos.filter(tipo =>
+    (tipo.descripcion || '').toLowerCase().includes(filtro.toLowerCase())
+  );
+  const totalPaginas = Math.ceil(tiposFiltrados.length / filasPorPagina);
+  const tiposPaginados = tiposFiltrados.slice((pagina - 1) * filasPorPagina, pagina * filasPorPagina);
 
   useEffect(() => {
     fetchTipos();
@@ -82,13 +92,29 @@ export default function TiposMedicamentoPage() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [showModal, showEditModal, showDeleteModal, selected]);
 
+  // Escape para cerrar modales de eliminación
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && showDeleteModal) {
+        setShowDeleteModal(false);
+        setSelected(null);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showDeleteModal]);
+
   const fetchTipos = async () => {
     setLoading(true);
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_TIPOS);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
       setTipos(data);
     } catch (error) {
+      console.error('Error fetching tipos:', error);
       setMensajeGlobal('Error al cargar los tipos de medicamento');
     }
     setLoading(false);
@@ -114,13 +140,14 @@ export default function TiposMedicamentoPage() {
     let success = true;
     for (const descripcion of elementosAGuardar) {
       try {
-        const res = await fetch(API_URL, {
+        const res = await fetch(API_TIPOS, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ descripcion }),
         });
         if (!res.ok) success = false;
       } catch (error) {
+        console.error('Error creating tipo:', error);
         success = false;
       }
     }
@@ -145,7 +172,7 @@ export default function TiposMedicamentoPage() {
     
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${editando.CodTipoMed}`, {
+      const res = await fetch(`${API_TIPOS}/${editando.CodTipoMed}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ descripcion: editando.descripcion }),
@@ -161,6 +188,7 @@ export default function TiposMedicamentoPage() {
         setMensajeGlobal('Error al actualizar el tipo de medicamento');
       }
     } catch (error) {
+      console.error('Error updating tipo:', error);
       setMensajeGlobal('Error al actualizar el tipo de medicamento');
     }
     setLoading(false);
@@ -171,7 +199,7 @@ export default function TiposMedicamentoPage() {
     
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${selected.CodTipoMed}`, {
+      const res = await fetch(`${API_TIPOS}/${selected.CodTipoMed}`, {
         method: 'DELETE',
       });
       
@@ -185,17 +213,14 @@ export default function TiposMedicamentoPage() {
         setMensajeGlobal('Error al eliminar el tipo de medicamento');
       }
     } catch (error) {
+      console.error('Error deleting tipo:', error);
       setMensajeGlobal('Error al eliminar el tipo de medicamento');
     }
     setLoading(false);
   };
 
-  const tiposFiltrados = tipos.filter(tipo =>
-    (tipo.descripcion || '').toLowerCase().includes(filtro.toLowerCase())
-  );
-
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mt-[-15px]">Tipos de Medicamento</h1>
         <button
@@ -206,13 +231,6 @@ export default function TiposMedicamentoPage() {
           <span className="text-sm font-medium">Agregar</span>
         </button>
       </div>
-
-      {mensajeGlobal && (
-        <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200 text-left">
-          {mensajeGlobal}
-        </div>
-      )}
-
       <input
         type="text"
         placeholder="Filtrar tipos de medicamento..."
@@ -220,6 +238,11 @@ export default function TiposMedicamentoPage() {
         value={filtro}
         onChange={e => setFiltro(e.target.value)}
       />
+      {mensajeGlobal && (
+        <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200 text-left">
+          {mensajeGlobal}
+        </div>
+      )}
 
       <div className="overflow-x-auto w-full shadow-md rounded-lg border border-gray-200">
         <table className="w-full">
@@ -230,12 +253,10 @@ export default function TiposMedicamentoPage() {
             </tr>
           </thead>
           <tbody>
-            {tiposFiltrados.length === 0 ? (
-              <tr>
-                <td colSpan={2} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td>
-              </tr>
+            {tiposPaginados.length === 0 ? (
+              <tr><td colSpan={2} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td></tr>
             ) : (
-              tiposFiltrados.map((tipo) => (
+              tiposPaginados.map((tipo) => (
                 <tr
                   key={tipo.CodTipoMed}
                   className="hover:bg-blue-50 cursor-pointer transition-colors duration-150 border-b border-gray-100"
@@ -251,6 +272,12 @@ export default function TiposMedicamentoPage() {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        currentPage={pagina}
+        totalPages={totalPaginas}
+        onPageChange={setPagina}
+      />
 
       {/* Modal de detalle */}
       {selected && !showDeleteModal && (
@@ -276,13 +303,13 @@ export default function TiposMedicamentoPage() {
             <div className="flex gap-3 mt-8">
               <button
                 onClick={() => { setEditando({ ...selected }); setShowEditModal(true); setSelected(null); }}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Editar
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Eliminar
               </button>
@@ -419,7 +446,7 @@ export default function TiposMedicamentoPage() {
                 </button>
                 <button
                   onClick={handleEditar}
-                  className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading || !editando.descripcion.trim()}
                 >
                   {loading ? (
@@ -477,7 +504,7 @@ export default function TiposMedicamentoPage() {
                 </button>
                 <button
                   onClick={handleEliminar}
-                  className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? (

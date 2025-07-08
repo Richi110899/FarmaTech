@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Pagination from '@/components/Pagination';
 
 const API_ORDENES = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-venta`;
 
@@ -47,14 +48,14 @@ function DetalleModal({ orden, onClose, onEdit, onDelete, eliminando, error, men
         <div className="flex gap-3 mt-8">
           <button
             onClick={onEdit}
-            className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+            className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
             disabled={eliminando}
           >
             Editar
           </button>
           <button
             onClick={onDelete}
-            className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+            className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
             disabled={eliminando}
           >
             {eliminando ? 'Eliminando...' : 'Eliminar'}
@@ -96,7 +97,7 @@ function ConfirmDeleteModal({ orden, onCancel, onConfirm, loading }) {
             </button>
             <button
               onClick={onConfirm}
-              className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
               {loading ? (
@@ -129,6 +130,11 @@ export default function OrdenesVentaPage() {
   const [eliminando, setEliminando] = useState(false);
   const [modalMensaje, setModalMensaje] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const filasPorPagina = 10;
+  const totalPaginas = Math.ceil(ordenes.length / filasPorPagina);
+  const ordenesPaginadas = ordenes.slice((pagina - 1) * filasPorPagina, pagina * filasPorPagina);
+
 
   useEffect(() => {
     fetchOrdenes();
@@ -141,6 +147,17 @@ export default function OrdenesVentaPage() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && showDeleteModal) {
+        setShowDeleteModal(false);
+        setDetalle(null);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showDeleteModal]);
 
   const fetchOrdenes = async () => {
     setLoading(true);
@@ -199,7 +216,7 @@ export default function OrdenesVentaPage() {
   };
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mt-[-15px]">Órdenes de Venta</h1>
         <button
@@ -233,10 +250,10 @@ export default function OrdenesVentaPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={4} className="text-center p-6 text-gray-500 text-sm">Cargando...</td></tr>
-            ) : ordenes.length === 0 ? (
+            ) : ordenesFiltradas.length === 0 ? (
               <tr><td colSpan={4} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td></tr>
             ) : (
-              ordenesFiltradas.map((orden) => (
+              ordenesPaginadas.map((orden) => (
                 <tr key={orden.NroOrdenVta} className="hover:bg-blue-50 cursor-pointer transition-colors duration-150 border-b border-gray-100"
                   onClick={() => handleRowClick(orden)}
                 >
@@ -250,6 +267,11 @@ export default function OrdenesVentaPage() {
           </tbody>
         </table>
       </div>
+      <Pagination
+        currentPage={pagina}
+        totalPages={totalPaginas}
+        onPageChange={setPagina}
+      />
       {detalle && !showDeleteModal && (
         <DetalleModal
           orden={detalle}

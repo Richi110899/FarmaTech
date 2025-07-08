@@ -4,15 +4,18 @@ const authController = require('../controllers/authController');
 const { verificarToken, esAdministrador } = require('../middleware/auth');
 
 // Rutas públicas
-router.post('/registrar', authController.registrar);
 router.post('/login', authController.login);
+router.post('/login-google', authController.loginGoogle);
+router.post('/verify-google', authController.verifyGoogleUser);
 
 // Rutas protegidas
-router.get('/perfil', verificarToken, authController.obtenerPerfil);
-router.put('/cambiar-password', verificarToken, authController.cambiarPassword);
+router.get('/profile', verificarToken, authController.obtenerPerfil);
 
 // Rutas solo para administradores
-router.get('/usuarios', verificarToken, esAdministrador, authController.obtenerUsuarios);
-router.put('/usuarios/:id', verificarToken, esAdministrador, authController.actualizarUsuario);
+router.get('/users', verificarToken, esAdministrador, authController.obtenerUsuarios);
+router.post('/users', verificarToken, esAdministrador, authController.crearUsuario);
+router.get('/users/:id', verificarToken, esAdministrador, authController.obtenerUsuario);
+router.put('/users/:id', verificarToken, esAdministrador, authController.actualizarUsuario);
+router.delete('/users/:id', verificarToken, esAdministrador, authController.eliminarUsuario);
 
 module.exports = router; 

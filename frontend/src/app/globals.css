@@ -5,3 +5,20 @@
 body {
   background: #f8fafc;
 }
+
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: #111 !important;
+  caret-color: #111;
+  border-color: #3b82f6 !important;
+  outline: none !important;
+}
+
+input:-internal-autofill-selected {
+  background-color: #fff !important;
+  color: #111 !important;
+}

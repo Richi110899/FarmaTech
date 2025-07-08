@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Pagination from '@/components/Pagination';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/especialidades`;
+const API_ESPECIALIDADES = `${process.env.NEXT_PUBLIC_API_URL}/api/especialidades`;
 
 // Floating label input reutilizable
 const FloatingInput = ({ label, name, value, onChange, ...props }) => (
@@ -40,6 +41,8 @@ export default function EspecialidadesPage() {
   const [loading, setLoading] = useState(false);
   const [mensajeModal, setMensajeModal] = useState('');
   const [mensajeGlobal, setMensajeGlobal] = useState('');
+  const [pagina, setPagina] = useState(1);
+  const filasPorPagina = 10;
   const router = useRouter();
 
   useEffect(() => {
@@ -84,13 +87,29 @@ export default function EspecialidadesPage() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [showModal, showEditModal, showDeleteModal, selected]);
 
+  // Escape para cerrar modales de eliminación
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && showDeleteModal) {
+        setShowDeleteModal(false);
+        setSelected(null);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showDeleteModal]);
+
   const fetchEspecialidades = async () => {
     setLoading(true);
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_ESPECIALIDADES);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
       setEspecialidades(data);
     } catch (error) {
+      console.error('Error fetching especialidades:', error);
       setMensajeGlobal('Error al cargar las especialidades');
     }
     setLoading(false);
@@ -116,13 +135,14 @@ export default function EspecialidadesPage() {
     let success = true;
     for (const descripcion of elementosAGuardar) {
       try {
-        const res = await fetch(API_URL, {
+        const res = await fetch(API_ESPECIALIDADES, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ descripcionEsp: descripcion }),
         });
         if (!res.ok) success = false;
       } catch (error) {
+        console.error('Error creating especialidad:', error);
         success = false;
       }
     }
@@ -147,7 +167,7 @@ export default function EspecialidadesPage() {
     
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${editando.CodEspec}`, {
+      const res = await fetch(`${API_ESPECIALIDADES}/${editando.CodEspec}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ descripcionEsp: editando.descripcionEsp }),
@@ -163,6 +183,7 @@ export default function EspecialidadesPage() {
         setMensajeGlobal('Error al actualizar la especialidad');
       }
     } catch (error) {
+      console.error('Error updating especialidad:', error);
       setMensajeGlobal('Error al actualizar la especialidad');
     }
     setLoading(false);
@@ -173,7 +194,7 @@ export default function EspecialidadesPage() {
     
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/${selected.CodEspec}`, {
+      const res = await fetch(`${API_ESPECIALIDADES}/${selected.CodEspec}`, {
         method: 'DELETE',
       });
       
@@ -187,17 +208,21 @@ export default function EspecialidadesPage() {
         setMensajeGlobal('Error al eliminar la especialidad');
       }
     } catch (error) {
+      console.error('Error deleting especialidad:', error);
       setMensajeGlobal('Error al eliminar la especialidad');
     }
     setLoading(false);
   };
 
+  // Aplica el filtro primero si existe
   const especialidadesFiltradas = especialidades.filter(especialidad =>
     (especialidad.descripcionEsp || '').toLowerCase().includes(filtro.toLowerCase())
   );
+  const totalPaginas = Math.ceil(especialidadesFiltradas.length / filasPorPagina);
+  const especialidadesPaginadas = especialidadesFiltradas.slice((pagina - 1) * filasPorPagina, pagina * filasPorPagina);
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mt-[-15px]">Especialidades</h1>
         <button
@@ -208,13 +233,6 @@ export default function EspecialidadesPage() {
           <span className="text-sm font-medium">Agregar</span>
         </button>
       </div>
-
-      {mensajeGlobal && (
-        <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200 text-left">
-          {mensajeGlobal}
-        </div>
-      )}
-
       <input
         type="text"
         placeholder="Filtrar especialidades..."
@@ -222,6 +240,11 @@ export default function EspecialidadesPage() {
         value={filtro}
         onChange={e => setFiltro(e.target.value)}
       />
+      {mensajeGlobal && (
+        <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200 text-left">
+          {mensajeGlobal}
+        </div>
+      )}
 
       <div className="overflow-x-auto w-full shadow-md rounded-lg border border-gray-200">
         <table className="w-full">
@@ -232,14 +255,12 @@ export default function EspecialidadesPage() {
             </tr>
           </thead>
           <tbody>
-            {especialidadesFiltradas.length === 0 ? (
-              <tr>
-                <td colSpan={2} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td>
-              </tr>
+            {especialidadesPaginadas.length === 0 ? (
+              <tr><td colSpan={2} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td></tr>
             ) : (
-              especialidadesFiltradas.map((especialidad, index) => (
+              especialidadesPaginadas.map((especialidad) => (
                 <tr
-                  key={especialidad.CodEspec || index}
+                  key={especialidad.CodEspec || especialidad.CodEspec}
                   className="hover:bg-blue-50 cursor-pointer transition-colors duration-150 border-b border-gray-100"
                   onClick={() => setSelected(especialidad)}
                 >
@@ -253,6 +274,14 @@ export default function EspecialidadesPage() {
           </tbody>
         </table>
       </div>
+
+      {totalPaginas > 1 && (
+        <Pagination
+          currentPage={pagina}
+          totalPages={totalPaginas}
+          onPageChange={setPagina}
+        />
+      )}
 
       {/* Modal de detalle */}
       {selected && !showDeleteModal && (
@@ -278,13 +307,13 @@ export default function EspecialidadesPage() {
             <div className="flex gap-3 mt-8">
               <button
                 onClick={() => { setEditando({ ...selected }); setShowEditModal(true); setSelected(null); }}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Editar
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Eliminar
               </button>
@@ -423,7 +452,7 @@ export default function EspecialidadesPage() {
                 </button>
                 <button
                   onClick={handleEditar}
-                  className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading || !editando.descripcionEsp.trim()}
                 >
                   {loading ? (
@@ -481,7 +510,7 @@ export default function EspecialidadesPage() {
                 </button>
                 <button
                   onClick={handleEliminar}
-                  className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? (

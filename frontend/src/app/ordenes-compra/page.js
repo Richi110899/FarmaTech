@@ -1,7 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import { getOrdenesCompra, deleteOrdenCompra, getLaboratorios, getDetallesOrdenCompra } from '@/services/api';
+
+const API_ORDENES_COMPRA = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-compra`;
+const API_LABORATORIOS = `${process.env.NEXT_PUBLIC_API_URL}/api/laboratorios`;
+const API_DETALLES_COMPRA = `${process.env.NEXT_PUBLIC_API_URL}/api/detalles-compra`;
 
 const columns = [
   { key: "NroOrdenC", label: "N° Orden" },
@@ -55,12 +58,29 @@ export default function OrdenesCompraPage() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [selected, showDeleteModal]);
 
+  // Escape para cerrar modales de eliminación
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && showDeleteModal) {
+        setShowDeleteModal(false);
+        setSelected(null);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showDeleteModal]);
+
   const fetchOrdenes = async () => {
     setLoading(true);
     try {
-      const data = await getOrdenesCompra();
+      const res = await fetch(API_ORDENES_COMPRA);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const data = await res.json();
       setOrdenes(data);
-    } catch {
+    } catch (error) {
+      console.error('Error fetching ordenes:', error);
       setMensajeGlobal("Error al cargar las órdenes de compra");
     }
     setLoading(false);
@@ -68,16 +88,28 @@ export default function OrdenesCompraPage() {
 
   const fetchLaboratoriosList = async () => {
     try {
-      const data = await getLaboratorios();
+      const res = await fetch(API_LABORATORIOS);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const data = await res.json();
       setLaboratorios(data);
-    } catch {}
+    } catch (error) {
+      console.error('Error fetching laboratorios:', error);
+    }
   };
 
   const fetchDetalles = async () => {
     try {
-      const data = await getDetallesOrdenCompra();
+      const res = await fetch(API_DETALLES_COMPRA);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const data = await res.json();
       setDetalles(data);
-    } catch {}
+    } catch (error) {
+      console.error('Error fetching detalles:', error);
+    }
   };
 
   const getLabNombre = (id) => laboratorios.find(l => l.CodLab === id)?.razonSocial || "-";
@@ -104,26 +136,32 @@ export default function OrdenesCompraPage() {
     if (!selected) return;
     setEliminando(true);
     try {
-      const res = await deleteOrdenCompra(selected.NroOrdenC);
-      if (res && res.message) {
-        setMensajeGlobal("Orden de compra eliminada exitosamente");
-        setShowDeleteModal(false); setSelected(null);
-        await fetchOrdenes();
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('ordenCompraMensaje', 'Orden de compra eliminada');
+      const res = await fetch(`${API_ORDENES_COMPRA}/${selected.NroOrdenC}`, { method: "DELETE" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.message) {
+          setMensajeGlobal("Orden de compra eliminada exitosamente");
+          setShowDeleteModal(false); setSelected(null);
+          await fetchOrdenes();
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ordenCompraMensaje', 'Orden de compra eliminada');
+          }
+          setTimeout(() => setMensajeGlobal(""), 3000);
+        } else {
+          setMensajeGlobal("Error al eliminar la orden de compra");
         }
-        setTimeout(() => setMensajeGlobal(""), 3000);
       } else {
         setMensajeGlobal("Error al eliminar la orden de compra");
       }
-    } catch {
+    } catch (error) {
+      console.error('Error deleting orden:', error);
       setMensajeGlobal("Error al eliminar la orden de compra");
     }
     setEliminando(false);
   };
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mt-[-15px]">Órdenes de Compra</h1>
         <button
@@ -151,7 +189,7 @@ export default function OrdenesCompraPage() {
           <thead>
             <tr className="bg-gray-50">
               {columns.map(col => (
-                <th key={col.key} className="p-3 border-b border-gray-200 text-left font-medium text-gray-700 text-sm">{col.label}</th>
+                <th key={col.key} className="p-3 border-b border-gray-200 text-left font-medium text-gray-700 text-sm">{col.label === 'N° Orden' ? 'Nro Orden' : col.label}</th>
               ))}
             </tr>
           </thead>
@@ -219,13 +257,13 @@ export default function OrdenesCompraPage() {
             <div className="flex gap-3 mt-8">
               <button
                 onClick={() => router.push(`/ordenes-compra/editar/${selected.NroOrdenC}`)}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-yellow-500 bg-white text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Editar
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
               >
                 Eliminar
               </button>
@@ -267,7 +305,7 @@ export default function OrdenesCompraPage() {
                 </button>
                 <button
                   onClick={handleEliminar}
-                  className="flex-1 px-4 py-3 rounded-xl border-2 border-blue-600 bg-white text-blue-700 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl border-2 border-red-600 bg-white text-red-700 hover:bg-red-50 hover:border-red-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={eliminando}
                 >
                   {eliminando ? (

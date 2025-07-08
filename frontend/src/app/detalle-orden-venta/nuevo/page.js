@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useSWR, { mutate } from 'swr';
 
-const API_DETALLES = `${process.env.NEXT_PUBLIC_API_URL}/api/detalles-venta`;
+const API_DETALLES_VENTA = `${process.env.NEXT_PUBLIC_API_URL}/api/detalles-venta`;
+const API_ORDENES_VENTA = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-venta`;
 const API_MEDICAMENTOS = `${process.env.NEXT_PUBLIC_API_URL}/api/medicamentos`;
-const API_ORDENES = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-venta`;
 
 const Input = ({ label, name, type = "text", value, onChange, ...props }) => {
   const isDate = type === 'date';
@@ -79,26 +78,60 @@ const FloatingSelect = ({ label, name, value, onChange, children, ...props }) =>
   );
 };
 
-const fetcher = url => fetch(url).then(r => r.json());
-
 export default function NuevoDetalleOrdenVenta() {
   const router = useRouter();
-  // SWR para órdenes de venta
-  const { data: ordenes = [], isLoading: loadingOrdenes } = useSWR(API_ORDENES, fetcher);
+  const [ordenes, setOrdenes] = useState([]);
+  const [medicamentos, setMedicamentos] = useState([]);
   const [detallesExistentes, setDetallesExistentes] = useState([]);
   const [nroOrden, setNroOrden] = useState("");
   const [detalles, setDetalles] = useState([
     { CodMedicamento: "", descripcionMed: "", cantidadRequerida: "", stock: null }
   ]);
   const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // SWR para medicamentos
-  const { data: medicamentos = [], isLoading: loadingMeds } = useSWR(API_MEDICAMENTOS, fetcher);
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    fetch(API_DETALLES).then(r => r.json()).then(setDetallesExistentes);
+    async function fetchData() {
+      try {
+        setLoadingData(true);
+        const [ordsRes, medsRes, detsRes] = await Promise.all([
+          fetch(API_ORDENES_VENTA),
+          fetch(API_MEDICAMENTOS),
+          fetch(API_DETALLES_VENTA)
+        ]);
+        
+        if (!ordsRes.ok || !medsRes.ok || !detsRes.ok) {
+          throw new Error('Error fetching data');
+        }
+        
+        const [ords, meds, dets] = await Promise.all([
+          ordsRes.json(),
+          medsRes.json(),
+          detsRes.json()
+        ]);
+        
+        setOrdenes(ords);
+        setMedicamentos(meds);
+        setDetallesExistentes(dets);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError("Error al cargar los datos");
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    fetchData();
   }, []);
+
+  // Mensaje de éxito desaparece a los 3 segundos
+  useEffect(() => {
+    if (mensaje) {
+      const timer = setTimeout(() => setMensaje(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [mensaje]);
 
   // Actualiza el stock y descripción al seleccionar medicamento
   const handleDetalleChange = (idx, field, value) => {
@@ -128,6 +161,7 @@ export default function NuevoDetalleOrdenVenta() {
   const handleSubmit = async e => {
     e.preventDefault();
     setError("");
+    setMensaje("");
     if (!nroOrden) {
       setError("Selecciona una orden de venta.");
       return;
@@ -152,21 +186,26 @@ export default function NuevoDetalleOrdenVenta() {
         descripcionMed: d.descripcionMed,
         cantidadRequerida: Number(d.cantidadRequerida)
       }));
-      const res = await fetch(API_DETALLES, {
+      
+      const res = await fetch(API_DETALLES_VENTA, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      
       if (res.ok) {
+        setMensaje("Detalles de orden de venta creados exitosamente");
+        setNroOrden("");
+        setDetalles([{ CodMedicamento: "", descripcionMed: "", cantidadRequerida: "", stock: null }]);
+        
         if (typeof window !== 'undefined') {
           localStorage.setItem('detalleOrdenVentaMensaje', 'Detalles de orden de venta creados exitosamente');
         }
-        mutate(API_ORDENES); // Actualiza la lista de órdenes en todas las páginas
-        router.push('/detalle-orden-venta');
       } else {
         setError('Error al crear los detalles de orden de venta');
       }
-    } catch {
+    } catch (error) {
+      console.error('Error creating detalles:', error);
       setError('Error al crear los detalles de orden de venta');
     }
     setLoading(false);
@@ -176,12 +215,15 @@ export default function NuevoDetalleOrdenVenta() {
   const usados = new Set(detallesExistentes.map(d => d.NroOrdenVta));
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Nuevo Detalle de Orden de Venta</h1>
       </div>
       <div className="pt-8">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 w-full">
+          {mensaje && (
+            <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200 text-left">{mensaje}</div>
+          )}
           {error && (
             <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-red-100 text-red-800 border border-red-200 text-left">{error}</div>
           )}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { addMedicamento } from '../../../services/api';
+import { addMedicamento, API_ENDPOINTS } from '../../../services/api';
 import useSWR from 'swr';
 
 const API_ESP = `${process.env.NEXT_PUBLIC_API_URL}/api/especialidades`;
@@ -15,7 +15,6 @@ const initialState = {
   Presentacion: '',
   stock: '',
   precioVentaUni: '',
-  precioVentaPres: '',
   CodTipoMed: '',
   Marca: '',
   CodEspec: ''
@@ -100,15 +99,14 @@ const fetcher = url => fetch(url).then(r => r.json());
 export default function NuevoMedicamento() {
   const router = useRouter();
   // SWR para especialidades y tipos
-  const { data: especialidades = [], isLoading: loadingEsp } = useSWR(API_ESP, fetcher);
-  const { data: tipos = [], isLoading: loadingTipos } = useSWR(API_TIPO, fetcher);
+  const { data: especialidades = [], isLoading: loadingEsp } = useSWR(API_ENDPOINTS.ESPECIALIDADES, fetcher);
+  const { data: tipos = [], isLoading: loadingTipos } = useSWR(API_ENDPOINTS.TIPOS, fetcher);
   const [form, setForm] = useState({
     descripcionMed: '',
     Presentacion: '',
     Marca: '',
     stock: '',
     precioVentaUni: '',
-    precioVentaPres: '',
     fechaFabricacion: '',
     fechaVencimiento: '',
     CodTipoMed: '',
@@ -154,7 +152,7 @@ export default function NuevoMedicamento() {
   };
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mb-8">Nuevo Medicamento</h1>
       </div>
@@ -189,9 +187,8 @@ export default function NuevoMedicamento() {
             <Input label="Stock" name="stock" type="number" min="0" value={form.stock} onChange={handleChange} required />
           </div>
           {/* Fila 3 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
             <Input label="Precio Venta Unidad" name="precioVentaUni" type="number" step="0.01" min="0" value={form.precioVentaUni} onChange={handleChange} required />
-            <Input label="Precio Venta Presentación" name="precioVentaPres" type="number" step="0.01" min="0" value={form.precioVentaPres} onChange={handleChange} required />
             <Input label="Fecha de fabricación" name="fechaFabricacion" type="date" value={form.fechaFabricacion} onChange={handleChange} required />
             <Input label="Fecha de vencimiento" name="fechaVencimiento" type="date" value={form.fechaVencimiento} onChange={handleChange} required />
           </div>

@@ -76,7 +76,6 @@ const FloatingSelect = ({ label, name, value, onChange, children, ...props }) =>
 const campos = [
   { key: "fechaEmision", label: "Fecha de Emisión", type: "date" },
   { key: "Situacion", label: "Situación" },
-  { key: "Total", label: "Total", type: "number", step: "0.01", min: "0" },
   { key: "NrofacturaProv", label: "N° Factura Proveedor" },
 ];
 
@@ -84,7 +83,7 @@ export default function EditarOrdenCompraPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id;
-  const [form, setForm] = useState({ fechaEmision: "", Situacion: "", Total: "", CodLab: "", NrofacturaProv: "" });
+  const [form, setForm] = useState({ fechaEmision: "", Situacion: "", CodLab: "", NrofacturaProv: "" });
   const [laboratorios, setLaboratorios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -103,7 +102,6 @@ export default function EditarOrdenCompraPage() {
         setForm({
           fechaEmision: data.fechaEmision ? data.fechaEmision.slice(0,10) : "",
           Situacion: data.Situacion || "",
-          Total: data.Total || "",
           CodLab: data.CodLab ? String(data.CodLab) : "",
           NrofacturaProv: data.NrofacturaProv || ""
         });
@@ -123,7 +121,7 @@ export default function EditarOrdenCompraPage() {
   const handleSubmit = async e => {
     e.preventDefault();
     setError("");
-    if (!form.fechaEmision || !form.Situacion.trim() || !form.Total || !form.CodLab) {
+    if (!form.fechaEmision || !form.Situacion.trim() || !form.CodLab) {
       setError("Completa todos los campos obligatorios");
       return;
     }
@@ -131,8 +129,7 @@ export default function EditarOrdenCompraPage() {
     try {
       const res = await updateOrdenCompra(id, {
         ...form,
-        CodLab: Number(form.CodLab),
-        Total: Number(form.Total)
+        CodLab: Number(form.CodLab)
       });
       if (res && res.NroOrdenC) {
         if (typeof window !== 'undefined') {
@@ -159,7 +156,7 @@ export default function EditarOrdenCompraPage() {
   }
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Editar Orden de Compra</h1>
       </div>

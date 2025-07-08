@@ -1,7 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import { addOrdenCompra, getLaboratorios } from '@/services/api';
+
+const API_ORDENES_COMPRA = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-compra`;
+const API_LABORATORIOS = `${process.env.NEXT_PUBLIC_API_URL}/api/laboratorios`;
 
 const Input = ({ label, name, type = "text", value, onChange, ...props }) => {
   const [focused, setFocused] = React.useState(false);
@@ -81,18 +83,50 @@ const campos = [
 
 export default function NuevaOrdenCompraPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ fechaEmision: "", Situacion: "", Total: "", CodLab: "", NrofacturaProv: "" });
+  
+  // Fecha actual en formato yyyy-mm-dd
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const defaultFecha = `${yyyy}-${mm}-${dd}`;
+  
+  const [form, setForm] = useState({ 
+    fechaEmision: defaultFecha, 
+    Situacion: "", 
+    Total: "", 
+    CodLab: "", 
+    NrofacturaProv: "" 
+  });
   const [laboratorios, setLaboratorios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function fetchLabs() {
-      const labs = await getLaboratorios();
-      setLaboratorios(labs);
+      try {
+        const res = await fetch(API_LABORATORIOS);
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const labs = await res.json();
+        setLaboratorios(labs);
+      } catch (error) {
+        console.error('Error fetching laboratorios:', error);
+        setError("Error al cargar los laboratorios");
+      }
     }
     fetchLabs();
   }, []);
+
+  // Mensaje de éxito desaparece a los 3 segundos
+  useEffect(() => {
+    if (mensaje) {
+      const timer = setTimeout(() => setMensaje(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [mensaje]);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -101,38 +135,60 @@ export default function NuevaOrdenCompraPage() {
   const handleSubmit = async e => {
     e.preventDefault();
     setError("");
+    setMensaje("");
     if (!form.fechaEmision || !form.Situacion.trim() || !form.CodLab) {
       setError("Completa todos los campos obligatorios");
       return;
     }
     setLoading(true);
     try {
-      const res = await addOrdenCompra({
-        ...form,
-        CodLab: Number(form.CodLab),
-        Total: Number(form.Total)
+      const res = await fetch(API_ORDENES_COMPRA, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          CodLab: Number(form.CodLab),
+          Total: Number(form.Total)
+        })
       });
-      if (res && res.NroOrdenC) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('ordenCompraMensaje', 'Orden de compra creada exitosamente');
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.NroOrdenC) {
+          setMensaje("Orden de compra creada exitosamente");
+          setForm({ 
+            fechaEmision: defaultFecha, 
+            Situacion: "", 
+            Total: "", 
+            CodLab: "", 
+            NrofacturaProv: "" 
+          });
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ordenCompraMensaje', 'Orden de compra creada exitosamente');
+          }
+        } else {
+          setError("Error al crear la orden de compra");
         }
-        router.push('/ordenes-compra');
       } else {
         setError("Error al crear la orden de compra");
       }
-    } catch {
+    } catch (error) {
+      console.error('Error creating orden:', error);
       setError("Error al crear la orden de compra");
     }
     setLoading(false);
   };
 
   return (
-    <div className="w-full mx-auto pr-4 mr-8">
+    <div className="w-full mx-auto mt-10 pr-4 mr-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Nueva Orden de Compra</h1>
       </div>
       <div className="pt-8">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 w-full">
+          {mensaje && (
+            <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200 text-left">{mensaje}</div>
+          )}
           {error && (
             <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-red-100 text-red-800 border border-red-200 text-left">{error}</div>
           )}
