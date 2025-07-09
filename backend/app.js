@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const sequelize = require('./config/database');
+const { sequelize } = require('./models');
 
 const app = express();
 app.use(cors({
@@ -28,4 +28,8 @@ app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 app.get('/', (req, res) => res.send('API PibuFarma funcionando'));
 
-console.log(`Servidor corriendo en puerto ${process.env.PORT}`);
+sequelize.sync().then(() => {
+  app.listen(process.env.PORT, () => {
+    console.log(`Servidor corriendo en puerto ${process.env.PORT}`);
+  });
+});
