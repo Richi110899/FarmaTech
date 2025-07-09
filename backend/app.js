@@ -28,4 +28,6 @@ app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 app.get('/', (req, res) => res.send('API PibuFarma funcionando'));
 
-console.log(`Servidor corriendo en puerto ${process.env.PORT}`);
+app.listen(process.env.PORT, () => {
+  console.log(`Servidor corriendo en puerto ${process.env.PORT}`);
+});
