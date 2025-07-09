@@ -29,6 +29,6 @@ const Medicamento = sequelize.define('Medicamento', {
     type: DataTypes.INTEGER, 
     defaultValue: 30 
   }
-}, { tableName: 'medicamento', timestamps: false });
+}, { tableName: 'Medicamento', timestamps: false });
 
 module.exports = Medicamento;
