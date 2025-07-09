@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
+import Pagination from '@/components/Pagination';
 
 const API_ORDENES_COMPRA = `${process.env.NEXT_PUBLIC_API_URL}/api/ordenes-compra`;
 const API_LABORATORIOS = `${process.env.NEXT_PUBLIC_API_URL}/api/laboratorios`;
@@ -25,6 +26,11 @@ export default function OrdenesCompraPage() {
   const [mensajeGlobal, setMensajeGlobal] = useState("");
   const [eliminando, setEliminando] = useState(false);
   const [detalles, setDetalles] = useState([]);
+  const [pagina, setPagina] = useState(1);
+  const filasPorPagina = 10;
+  const totalPaginas = Math.ceil(ordenesFiltradas.length / filasPorPagina);
+  const ordenesPaginadas = ordenesFiltradas.slice((pagina - 1) * filasPorPagina, pagina * filasPorPagina);
+
 
   useEffect(() => {
     fetchOrdenes();
@@ -194,10 +200,10 @@ export default function OrdenesCompraPage() {
             </tr>
           </thead>
           <tbody>
-            {ordenesFiltradas.length === 0 ? (
+            {ordenesPaginadas.length === 0 ? (
               <tr><td colSpan={columns.length} className="text-center p-6 text-gray-500 text-sm">Sin datos disponibles</td></tr>
             ) : (
-              ordenesFiltradas.map((oc) => (
+              ordenesPaginadas.map((oc) => (
                 <tr
                   key={oc.NroOrdenC}
                   className="hover:bg-blue-50 cursor-pointer transition-colors duration-150 border-b border-gray-100"
@@ -214,6 +220,11 @@ export default function OrdenesCompraPage() {
           </tbody>
         </table>
       </div>
+      <Pagination
+        currentPage={pagina}
+        totalPages={totalPaginas}
+        onPageChange={setPagina}
+      />
       {/* Modal de detalle */}
       {selected && !showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
