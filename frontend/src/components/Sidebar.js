@@ -168,9 +168,13 @@ export default function Sidebar({ mobile = false, onNavigate }) {
   };
 
   const handleLogout = () => {
-    signOut({ callbackUrl: '/login' }); // Cierra sesión en NextAuth y tu app
-    logout(); // Limpia el contexto y localStorage
+    // Limpia el contexto y localStorage primero
+    logout && logout(); // Si existe logout en el contexto
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
     setShowLogoutModal(false);
+    // Luego llama a signOut de NextAuth (esto redirige y limpia la sesión NextAuth)
+    signOut({ callbackUrl: '/login' });
   };
 
   return (
