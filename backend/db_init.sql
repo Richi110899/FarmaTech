@@ -1,6 +1,3 @@
-CREATE DATABASE IF NOT EXISTS bd_Farmacia;
-USE bd_Farmacia;
-
 CREATE TABLE Especialidad (
   CodEspec INT AUTO_INCREMENT PRIMARY KEY,
   descripcionEsp VARCHAR(100)
