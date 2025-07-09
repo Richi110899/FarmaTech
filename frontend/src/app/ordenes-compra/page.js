@@ -28,6 +28,15 @@ export default function OrdenesCompraPage() {
   const [detalles, setDetalles] = useState([]);
   const [pagina, setPagina] = useState(1);
   const filasPorPagina = 10;
+
+  const ordenesFiltradas = ordenes.filter(oc => {
+    const nroOrdenStr = String(oc.NroOrdenC).padStart(3, '0');
+    return (
+      columns.some(col => (oc[col.key] || "").toString().toLowerCase().includes(filtro.toLowerCase())) ||
+      getLabNombre(oc.CodLab).toLowerCase().includes(filtro.toLowerCase()) ||
+      nroOrdenStr.includes(filtro)
+    );
+  });
   const totalPaginas = Math.ceil(ordenesFiltradas.length / filasPorPagina);
   const ordenesPaginadas = ordenesFiltradas.slice((pagina - 1) * filasPorPagina, pagina * filasPorPagina);
 
@@ -120,15 +129,6 @@ export default function OrdenesCompraPage() {
 
   const getLabNombre = (id) => laboratorios.find(l => l.CodLab === id)?.razonSocial || "-";
 
-  const ordenesFiltradas = ordenes.filter(oc => {
-    const nroOrdenStr = String(oc.NroOrdenC).padStart(3, '0');
-    return (
-      columns.some(col => (oc[col.key] || "").toString().toLowerCase().includes(filtro.toLowerCase())) ||
-      getLabNombre(oc.CodLab).toLowerCase().includes(filtro.toLowerCase()) ||
-      nroOrdenStr.includes(filtro)
-    );
-  });
-
   // Calcula el total sumando los montouni de los detalles asociados a la orden
   const getTotalOrden = (nroOrdenC) => {
     return detalles
@@ -183,7 +183,7 @@ export default function OrdenesCompraPage() {
         placeholder="Filtrar órdenes de compra..."
         className="mb-6 px-4 py-2.5 border border-gray-300 rounded-lg w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-200 text-sm"
         value={filtro}
-        onChange={e => setFiltro(e.target.value)}
+        onChange={e => { setFiltro(e.target.value); setPagina(1); }}
       />
       {mensajeGlobal && (
         <div className="mb-6 p-4 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200 text-left">
