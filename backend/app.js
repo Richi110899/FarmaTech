@@ -27,13 +27,3 @@ app.use('/api/alertas', require('./routes/alertaRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 app.get('/', (req, res) => res.send('API PibuFarma funcionando'));
-
-// Crear tablas automáticamente en Railway
-sequelize.sync({ force: false }).then(() => {
-  const port = process.env.PORT || 3001;
-  app.listen(port, () => {
-    console.log(`Servidor corriendo en puerto ${port}`);
-  });
-}).catch(error => {
-  console.error('Error al sincronizar la base de datos:', error);
-});
