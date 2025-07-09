@@ -5,7 +5,7 @@ const sequelize = require('./config/database');
 
 const app = express();
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: 'https://farma-tech.vercel.app/', // tu dominio de Vercel
   credentials: true
 }));
 app.use(express.json());
@@ -27,3 +27,9 @@ app.use('/api/alertas', require('./routes/alertaRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 
 app.get('/', (req, res) => res.send('API PibuFarma funcionando'));
+
+sequelize.sync().then(() => {
+  app.listen(process.env.PORT, () => {
+    console.log(`Servidor corriendo en puerto ${process.env.PORT}`);
+  });
+});
