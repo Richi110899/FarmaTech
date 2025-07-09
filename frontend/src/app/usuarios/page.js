@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import RoleGuard from '@/components/AuthGuard';
 import { useAuth } from "@/contexts/AuthContext";
 import Pagination from '@/components/Pagination';
+import { getUsers, updateUser } from "@/services/api";
 
 const API_USUARIOS = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/users`;
 
@@ -137,14 +138,7 @@ function UsuariosPage(props) {
   const fetchUsuarios = async () => {
     setLoading(true);
     try {
-      const response = await fetch(API_USUARIOS, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      
+      const data = await getUsers();
       if (data.success) {
         setUsuarios(data.users);
       } else {
@@ -170,15 +164,7 @@ function UsuariosPage(props) {
     if (!selected) return;
     setEliminando(true);
     try {
-      const response = await fetch(`${API_USUARIOS}/${selected.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ activo: !selected.activo })
-      });
-      const data = await response.json();
+      const data = await updateUser(selected.id, { activo: !selected.activo });
       if (data.success) {
         setMensajeGlobal(selected.activo ? 'Usuario desactivado correctamente' : 'Usuario activado correctamente');
         setShowDeleteModal(false);
