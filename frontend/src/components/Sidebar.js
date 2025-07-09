@@ -98,6 +98,7 @@ export default function Sidebar({ mobile = false, onNavigate }) {
   const { user, logout, isAuthenticated } = useAuth();
   const [open, setOpen] = useState({});
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const userRole = user?.rol;
 
@@ -168,14 +169,21 @@ export default function Sidebar({ mobile = false, onNavigate }) {
   };
 
   const handleLogout = () => {
-    // Limpia el contexto y localStorage primero
+    setIsLoggingOut(true);
     logout && logout(); // Si existe logout en el contexto
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
     setShowLogoutModal(false);
-    // Luego llama a signOut de NextAuth (esto redirige y limpia la sesión NextAuth)
     signOut({ callbackUrl: '/login' });
   };
+
+  if (isLoggingOut) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+        <div className="text-xl text-gray-700 animate-pulse">Cerrando sesión...</div>
+      </div>
+    );
+  }
 
   return (
     <>
