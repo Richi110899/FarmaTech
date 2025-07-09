@@ -148,8 +148,8 @@ export default function EditarUsuarioPage() {
 
   const loadUserData = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await getUsers(token);
+      // Usa getUsers de api.js, que ya maneja el token
+      const response = await getUsers();
       
       if (response.success) {
         const user = response.users.find(u => u.id == userId);
@@ -229,7 +229,6 @@ export default function EditarUsuarioPage() {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
       const userData = {
         nombre: formData.nombre.trim(),
         apellido: formData.apellido.trim(),
@@ -242,7 +241,8 @@ export default function EditarUsuarioPage() {
         userData.password = formData.password;
       }
 
-      const response = await updateUser(userId, userData, token);
+      // Usa updateUser de api.js, que ya maneja el token
+      const response = await updateUser(userId, userData);
 
       if (response.success) {
         // Redirigir inmediatamente con parámetro de éxito

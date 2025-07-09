@@ -171,7 +171,7 @@ export default function NuevoUsuarioPage() {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
+      // Elimina la obtención de token manual
       const userData = {
         nombre: formData.nombre.trim(),
         apellido: formData.apellido.trim(),
@@ -180,7 +180,8 @@ export default function NuevoUsuarioPage() {
         rol: formData.rol
       };
 
-      const response = await createUser(userData, token);
+      // Usa createUser de api.js, que ya maneja el token
+      const response = await createUser(userData);
 
       if (response.success) {
         setSuccessMessage("Usuario creado exitosamente");
