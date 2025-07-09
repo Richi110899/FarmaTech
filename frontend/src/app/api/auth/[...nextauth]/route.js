@@ -8,7 +8,7 @@ const handler = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
-  session: { strategy: "jwt" }, // <--- Aquí activas JWT
+  session: { strategy: "jwt" },
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
