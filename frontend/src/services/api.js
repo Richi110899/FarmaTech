@@ -1,3 +1,5 @@
+import { getSession } from "next-auth/react";
+
 export const API_ENDPOINTS = {
   MEDICAMENTOS: `${process.env.NEXT_PUBLIC_API_URL}/api/medicamentos`,
   LABORATORIOS: `${process.env.NEXT_PUBLIC_API_URL}/api/laboratorios`,
@@ -12,6 +14,17 @@ export const API_ENDPOINTS = {
   AUTH_USERS: `${process.env.NEXT_PUBLIC_API_URL}/api/auth/users`,
   AUTH_PROFILE: `${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`,
 };
+
+// Helper para peticiones autenticadas
+export async function fetchWithAuth(url, options = {}) {
+  const session = await getSession();
+  const headers = {
+    ...(options.headers || {}),
+    Authorization: session?.backendToken ? `Bearer ${session.backendToken}` : "",
+    "Content-Type": "application/json",
+  };
+  return fetch(url, { ...options, headers });
+}
 
 export async function getMedicamentos() {
     const res = await fetch(API_ENDPOINTS.MEDICAMENTOS, { cache: 'no-store' });
@@ -159,57 +172,35 @@ export async function loginGoogleUser(googleData) {
   return res.json();
 }
 
-export async function getUsers(token) {
-  const res = await fetch(API_ENDPOINTS.AUTH_USERS, {
-    headers: { 
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
+export async function getUsers() {
+  const res = await fetchWithAuth(API_ENDPOINTS.AUTH_USERS);
   return res.json();
 }
 
-export async function createUser(userData, token) {
-  const res = await fetch(API_ENDPOINTS.AUTH_USERS, {
+export async function createUser(userData) {
+  const res = await fetchWithAuth(API_ENDPOINTS.AUTH_USERS, {
     method: 'POST',
-    headers: { 
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify(userData)
   });
   return res.json();
 }
 
-export async function updateUser(id, userData, token) {
-  const res = await fetch(`${API_ENDPOINTS.AUTH_USERS}/${id}`, {
+export async function updateUser(id, userData) {
+  const res = await fetchWithAuth(`${API_ENDPOINTS.AUTH_USERS}/${id}`, {
     method: 'PUT',
-    headers: { 
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify(userData)
   });
   return res.json();
 }
 
-export async function deleteUser(id, token) {
-  const res = await fetch(`${API_ENDPOINTS.AUTH_USERS}/${id}`, {
-    method: 'DELETE',
-    headers: { 
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
+export async function deleteUser(id) {
+  const res = await fetchWithAuth(`${API_ENDPOINTS.AUTH_USERS}/${id}`, {
+    method: 'DELETE'
   });
   return res.json();
 }
 
-export async function getProfile(token) {
-  const res = await fetch(API_ENDPOINTS.AUTH_PROFILE, {
-    headers: { 
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
+export async function getProfile() {
+  const res = await fetchWithAuth(API_ENDPOINTS.AUTH_PROFILE);
   return res.json();
 }
