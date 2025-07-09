@@ -5,7 +5,7 @@ const { sequelize } = require('./models');
 
 const app = express();
 app.use(cors({
-  origin: 'https://farma-tech.vercel.app/', // tu dominio de Vercel
+  origin: 'https://farma-tech.vercel.app', // tu dominio de Vercel
   credentials: true
 }));
 app.use(express.json());
