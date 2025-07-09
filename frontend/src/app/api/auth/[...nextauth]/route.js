@@ -13,7 +13,7 @@ const handler = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3001'}/api/auth/verify-google`, {
+          const response = await fetch(`${process.env.BACKEND_URL}/api/auth/verify-google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: user.email, name: user.name }),

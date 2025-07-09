@@ -5,7 +5,7 @@ export async function POST(request) {
     const { email, name } = await request.json();
 
     // Verificar en nuestra base de datos
-    const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:3001'}/api/auth/verify-google`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/api/auth/verify-google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
